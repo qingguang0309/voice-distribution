@@ -1,1145 +1,1060 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>语音配货助手</title>
-  <style>
-      @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
-
-      :root {
-          --primary: #6366f1;
-          --primary-dark: #4f46e5;
-          --success: #10b981;
-          --warning: #f59e0b;
-          --danger: #ef4444;
-          --bg-dark: #0f172a;
-          --bg-card: #1e293b;
-          --bg-card-light: #334155;
-          --text-primary: #f1f5f9;
-          --text-secondary: #94a3b8;
-          --glow-primary: rgba(99, 102, 241, 0.5);
-          --glow-success: rgba(16, 185, 129, 0.5);
-      }
-
-      * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-      }
-
-      body {
-          font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-          background: var(--bg-dark);
-          min-height: 100vh;
-          color: var(--text-primary);
-          overflow-x: hidden;
-      }
-
-      .container {
-          max-width: 500px;
-          margin: 0 auto;
-          padding: 20px;
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-      }
-
-      .header {
-          text-align: center;
-          padding: 20px 0;
-      }
-
-      .header h1 {
-          font-size: 24px;
-          font-weight: 700;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          margin-bottom: 4px;
-      }
-
-      .header p {
-          font-size: 13px;
-          color: var(--text-secondary);
-      }
-
-      .main-content {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          justify-content: center;
-      }
-
-      .voice-visualizer {
-          width: 160px;
-          height: 160px;
-          margin: 0 auto 30px;
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-      }
-
-      .voice-ring {
-          position: absolute;
-          border-radius: 50%;
-          border: 2px solid var(--primary);
-          opacity: 0.3;
-          animation: pulse 2s ease-in-out infinite;
-      }
-
-      .voice-ring:nth-child(1) {
-          width: 100%;
-          height: 100%;
-          animation-delay: 0s;
-      }
-
-      .voice-ring:nth-child(2) {
-          width: 80%;
-          height: 80%;
-          animation-delay: 0.3s;
-      }
-
-      .voice-ring:nth-child(3) {
-          width: 60%;
-          height: 60%;
-          animation-delay: 0.6s;
-      }
-
-      @keyframes pulse {
-          0%, 100% {
-              transform: scale(1);
-              opacity: 0.3;
-          }
-          50% {
-              transform: scale(1.1);
-              opacity: 0.6;
-          }
-      }
-
-      .voice-icon {
-          width: 80px;
-          height: 80px;
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 36px;
-          box-shadow: 0 0 40px var(--glow-primary);
-          z-index: 1;
-          cursor: pointer;
-          transition: transform 0.2s;
-      }
-
-      .voice-icon:active {
-          transform: scale(0.95);
-      }
-
-      .listening .voice-ring {
-          border-color: var(--success);
-          animation: listening-pulse 0.5s ease-in-out infinite;
-      }
-
-      .listening .voice-icon {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          box-shadow: 0 0 40px var(--glow-success);
-      }
-
-      @keyframes listening-pulse {
-          0%, 100% {
-              transform: scale(1);
-              opacity: 0.5;
-          }
-          50% {
-              transform: scale(1.15);
-              opacity: 0.8;
-          }
-      }
-
-      .product-info {
-          background: var(--bg-card);
-          border-radius: 16px;
-          padding: 20px;
-          margin-bottom: 20px;
-          border: 1px solid var(--bg-card-light);
-      }
-
-      .product-name {
-          font-size: 22px;
-          font-weight: 700;
-          text-align: center;
-          margin-bottom: 16px;
-          color: var(--text-primary);
-      }
-
-      .stats-row {
-          display: flex;
-          justify-content: space-around;
-          margin-bottom: 16px;
-      }
-
-      .stat-item {
-          text-align: center;
-      }
-
-      .stat-label {
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin-bottom: 4px;
-      }
-
-      .stat-value {
-          font-size: 24px;
-          font-weight: 700;
-      }
-
-      .stat-value.estimate { color: var(--primary); }
-      .stat-value.remain { color: var(--warning); }
-      .stat-value.need { color: var(--success); }
-
-      .need-box {
-          background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
-          border: 2px solid var(--success);
-          border-radius: 16px;
-          padding: 16px;
-          text-align: center;
-      }
-
-      .need-box .label {
-          font-size: 13px;
-          color: var(--success);
-          margin-bottom: 4px;
-      }
-
-      .need-box .value {
-          font-size: 42px;
-          font-weight: 700;
-          color: var(--success);
-      }
-
-      .need-box .unit {
-          font-size: 16px;
-          color: var(--success);
-      }
-
-      .progress-info {
-          text-align: center;
-          margin-bottom: 16px;
-          font-size: 14px;
-          color: var(--text-secondary);
-      }
-
-      .progress-bar {
-          height: 6px;
-          background: var(--bg-card-light);
-          border-radius: 3px;
-          overflow: hidden;
-          margin-bottom: 20px;
-      }
-
-      .progress-fill {
-          height: 100%;
-          background: linear-gradient(90deg, var(--primary) 0%, #a855f7 100%);
-          border-radius: 3px;
-          transition: width 0.5s ease;
-      }
-
-      .status {
-          text-align: center;
-          padding: 12px;
-          border-radius: 12px;
-          font-size: 14px;
-          margin-bottom: 20px;
-      }
-
-      .status.listening {
-          background: rgba(16, 185, 129, 0.15);
-          color: var(--success);
-      }
-
-      .status.speaking {
-          background: rgba(99, 102, 241, 0.15);
-          color: var(--primary);
-      }
-
-      .status.waiting {
-          background: rgba(148, 163, 184, 0.15);
-          color: var(--text-secondary);
-      }
-
-      .user-speech {
-          background: var(--bg-card-light);
-          border-radius: 16px;
-          padding: 16px;
-          margin-bottom: 20px;
-          min-height: 50px;
-      }
-
-      .user-speech .label {
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin-bottom: 6px;
-      }
-
-      .user-speech .text {
-          font-size: 16px;
-          color: var(--text-primary);
-      }
-
-      .hint {
-          text-align: center;
-          font-size: 13px;
-          color: var(--text-secondary);
-          padding: 12px;
-          background: var(--bg-card);
-          border-radius: 12px;
-          margin-top: auto;
-      }
-
-      .hint strong {
-          color: var(--success);
-      }
-
-      .backup-buttons {
-          display: flex;
-          gap: 12px;
-          margin-top: 16px;
-      }
-
-      .backup-btn {
-          flex: 1;
-          padding: 16px 12px;
-          border: none;
-          border-radius: 14px;
-          font-size: 15px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.3s ease;
-      }
-
-      .backup-btn.complete {
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-      }
-
-      .backup-btn.skip {
-          background: var(--bg-card-light);
-          color: var(--text-secondary);
-          border: 1px solid var(--bg-card-light);
-      }
-
-      .backup-btn:active {
-          transform: scale(0.98);
-      }
-
-      .voice-error {
-          background: rgba(245, 158, 11, 0.15);
-          border: 1px solid var(--warning);
-          border-radius: 12px;
-          padding: 12px 16px;
-          margin-bottom: 16px;
-          font-size: 13px;
-          color: var(--warning);
-          text-align: center;
-      }
-
-      .page {
-          display: none;
-          flex-direction: column;
-          flex: 1;
-      }
-
-      .page.active {
-          display: flex;
-      }
-
-      .setup-card {
-          background: var(--bg-card);
-          border-radius: 20px;
-          padding: 28px;
-          border: 1px solid var(--bg-card-light);
-      }
-
-      .form-group {
-          margin-bottom: 20px;
-      }
-
-      .form-group label {
-          display: block;
-          font-size: 14px;
-          color: var(--text-secondary);
-          margin-bottom: 8px;
-      }
-
-      .form-group textarea {
-          width: 100%;
-          padding: 14px;
-          background: var(--bg-dark);
-          border: 2px solid var(--bg-card-light);
-          border-radius: 12px;
-          color: var(--text-primary);
-          font-size: 14px;
-          font-family: inherit;
-          resize: vertical;
-          min-height: 180px;
-      }
-
-      .form-group textarea:focus {
-          outline: none;
-          border-color: var(--primary);
-      }
-
-      .form-group textarea::placeholder {
-          color: var(--text-secondary);
-      }
-
-      .help-text {
-          font-size: 12px;
-          color: var(--text-secondary);
-          margin-top: 8px;
-      }
-
-      .btn {
-          width: 100%;
-          padding: 16px;
-          border: none;
-          border-radius: 14px;
-          font-size: 16px;
-          font-weight: 600;
-          font-family: inherit;
-          cursor: pointer;
-          transition: all 0.3s ease;
-      }
-
-      .btn-primary {
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          color: white;
-          box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
-      }
-
-      .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
-      }
-
-      .btn-primary:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-          transform: none;
-      }
-
-      .complete-icon {
-          width: 100px;
-          height: 100px;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 20px;
-          font-size: 50px;
-          box-shadow: 0 0 40px var(--glow-success);
-          animation: bounceIn 0.6s ease;
-      }
-
-      @keyframes bounceIn {
-          0% { transform: scale(0); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
-      }
-
-      .complete-title {
-          font-size: 24px;
-          font-weight: 700;
-          text-align: center;
-          margin-bottom: 8px;
-      }
-
-      .complete-subtitle {
-          font-size: 14px;
-          color: var(--text-secondary);
-          text-align: center;
-          margin-bottom: 24px;
-      }
-
-      .total-box {
-          background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-          border-radius: 16px;
-          padding: 20px;
-          text-align: center;
-          margin-bottom: 20px;
-      }
-
-      .total-label {
-          font-size: 14px;
-          opacity: 0.9;
-      }
-
-      .total-value {
-          font-size: 36px;
-          font-weight: 700;
-      }
-
-      .summary-list {
-          background: var(--bg-card);
-          border-radius: 16px;
-          padding: 16px;
-          max-height: 250px;
-          overflow-y: auto;
-          margin-bottom: 20px;
-      }
-
-      .summary-item {
-          display: flex;
-          justify-content: space-between;
-          padding: 10px 0;
-          border-bottom: 1px solid var(--bg-card-light);
-      }
-
-      .summary-item:last-child {
-          border-bottom: none;
-      }
-
-      .summary-item .name {
-          color: var(--text-primary);
-      }
-
-      .summary-item .count {
-          color: var(--success);
-          font-weight: 600;
-      }
-
-      .summary-item .skipped {
-          color: var(--text-secondary);
-      }
-
-      .browser-info {
-          background: rgba(99, 102, 241, 0.15);
-          border: 1px solid var(--primary);
-          border-radius: 12px;
-          padding: 12px;
-          margin-bottom: 16px;
-          font-size: 12px;
-          color: var(--text-secondary);
-          text-align: center;
-      }
-
-      .mic-button {
-          width: 100%;
-          padding: 16px;
-          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-          color: white;
-          border: none;
-          border-radius: 14px;
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          margin-bottom: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-      }
-
-      .mic-button:active {
-          transform: scale(0.98);
-      }
-
-      .mic-button.recording {
-          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-          animation: recording-pulse 1s ease-in-out infinite;
-      }
-
-      @keyframes recording-pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
-      }
-
-      @media (max-width: 400px) {
-          .container {
-              padding: 15px;
-          }
-
-          .voice-visualizer {
-              width: 140px;
-              height: 140px;
-          }
-
-          .voice-icon {
-              width: 70px;
-              height: 70px;
-              font-size: 32px;
-          }
-
-          .need-box .value {
-              font-size: 36px;
-          }
-      }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>语音配货助手</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-light: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --glow-primary: rgba(99, 102, 241, 0.5);
+            --glow-success: rgba(16, 185, 129, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* Voice visualizer */
+        .voice-visualizer {
+            width: 160px;
+            height: 160px;
+            margin: 0 auto 30px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .voice-ring {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            opacity: 0.3;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .voice-ring:nth-child(1) {
+            width: 100%;
+            height: 100%;
+            animation-delay: 0s;
+        }
+
+        .voice-ring:nth-child(2) {
+            width: 80%;
+            height: 80%;
+            animation-delay: 0.3s;
+        }
+
+        .voice-ring:nth-child(3) {
+            width: 60%;
+            height: 60%;
+            animation-delay: 0.6s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 0.6;
+            }
+        }
+
+        .voice-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            box-shadow: 0 0 40px var(--glow-primary);
+            z-index: 1;
+        }
+
+        .listening .voice-ring {
+            border-color: var(--success);
+            animation: listening-pulse 0.5s ease-in-out infinite;
+        }
+
+        .listening .voice-icon {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 0 40px var(--glow-success);
+        }
+
+        @keyframes listening-pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.15);
+                opacity: 0.8;
+            }
+        }
+
+        /* AI message bubble */
+        .ai-message {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--bg-card-light);
+        }
+
+        .ai-message .label {
+            font-size: 12px;
+            color: var(--primary);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-message .content {
+            font-size: 18px;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .ai-message .highlight {
+            color: var(--success);
+            font-weight: 700;
+            font-size: 28px;
+        }
+
+        /* Product info card */
+        .product-info {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--bg-card-light);
+        }
+
+        .product-name {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 16px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-value.estimate { color: var(--primary); }
+        .stat-value.remain { color: var(--warning); }
+        .stat-value.need { color: var(--success); }
+
+        .need-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%);
+            border: 2px solid var(--success);
+            border-radius: 16px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .need-box .label {
+            font-size: 13px;
+            color: var(--success);
+            margin-bottom: 4px;
+        }
+
+        .need-box .value {
+            font-size: 42px;
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .need-box .unit {
+            font-size: 16px;
+            color: var(--success);
+        }
+
+        /* Progress */
+        .progress-info {
+            text-align: center;
+            margin-bottom: 16px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-card-light);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary) 0%, #a855f7 100%);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        /* Status indicator */
+        .status {
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .status.listening {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+        }
+
+        .status.speaking {
+            background: rgba(99, 102, 241, 0.15);
+            color: var(--primary);
+        }
+
+        .status.waiting {
+            background: rgba(148, 163, 184, 0.15);
+            color: var(--text-secondary);
+        }
+
+        /* User speech display */
+        .user-speech {
+            background: var(--bg-card-light);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            min-height: 50px;
+        }
+
+        .user-speech .label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .user-speech .text {
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        /* Hint */
+        .hint {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            padding: 12px;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-top: auto;
+        }
+
+        .hint strong {
+            color: var(--success);
+        }
+
+        /* Backup buttons */
+        .backup-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .backup-btn {
+            flex: 1;
+            padding: 16px 12px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .backup-btn.complete {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .backup-btn.skip {
+            background: var(--bg-card-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--bg-card-light);
+        }
+
+        .backup-btn:active {
+            transform: scale(0.98);
+        }
+
+        .voice-error {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            color: var(--warning);
+            text-align: center;
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        /* Setup page */
+        .setup-card {
+            background: var(--bg-card);
+            border-radius: 20px;
+            padding: 28px;
+            border: 1px solid var(--bg-card-light);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-dark);
+            border: 2px solid var(--bg-card-light);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 180px;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .form-group textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .help-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            color: white;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.5);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Complete page */
+        .complete-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 50px;
+            box-shadow: 0 0 40px var(--glow-success);
+            animation: bounceIn 0.6s ease;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .complete-title {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .complete-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .total-box {
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .total-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .total-value {
+            font-size: 36px;
+            font-weight: 700;
+        }
+
+        .summary-list {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 16px;
+            max-height: 250px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--bg-card-light);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-item .name {
+            color: var(--text-primary);
+        }
+
+        .summary-item .count {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .summary-item .skipped {
+            color: var(--text-secondary);
+        }
+
+        /* Mic permission */
+        .permission-notice {
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid var(--warning);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--warning);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media (max-width: 400px) {
+            .container {
+                padding: 15px;
+            }
+
+            .voice-visualizer {
+                width: 140px;
+                height: 140px;
+            }
+
+            .voice-icon {
+                width: 70px;
+                height: 70px;
+                font-size: 32px;
+            }
+
+            .ai-message .content {
+                font-size: 16px;
+            }
+
+            .need-box .value {
+                font-size: 36px;
+            }
+        }
+
+        /* Error state */
+        .error-message {
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            color: var(--danger);
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-      <div class="header">
-          <h1>🎙️ 语音配货助手</h1>
-          <p>全程语音交互，解放双手</p>
-      </div>
+    <div class="container">
+        <div class="header">
+            <h1>🎙️ 语音配货助手</h1>
+            <p>全程语音交互，解放双手</p>
+        </div>
 
-      <!-- Setup Page -->
-      <div id="setupPage" class="page active">
-          <div class="main-content">
-              <div class="setup-card">
-                  <div id="browserInfo" class="browser-info" style="display: none;"></div>
-                  
-                  <div class="form-group">
-                      <label>📋 粘贴配货单数据</label>
-                      <textarea id="dataInput" placeholder="格式：商品名称,预估数量,剩余数量
+        <!-- Setup Page -->
+        <div id="setupPage" class="page active">
+            <div class="main-content">
+                <div class="setup-card">
+                    <div class="form-group">
+                        <label>📋 粘贴配货单数据</label>
+                        <textarea id="dataInput" placeholder="格式：商品名称,预估数量,剩余数量
 例如：
 苹果,100,20
 香蕉,80,30
 橙子,50,10
 牛奶,200,50
 面包,60,15"></textarea>
-                      <p class="help-text">每行一个商品，用英文逗号分隔</p>
-                  </div>
-                  <button class="btn btn-primary" id="startBtn" onclick="startVoiceDistribution()">
-                      🚀 开始语音配货
-                  </button>
-              </div>
-          </div>
-      </div>
-
-      <!-- Distribution Page -->
-      <div id="distributionPage" class="page">
-          <div class="progress-info">
-              商品 <span id="currentNum">1</span> / <span id="totalNum">10</span>
-          </div>
-          <div class="progress-bar">
-              <div class="progress-fill" id="progressFill" style="width: 10%"></div>
-          </div>
-
-          <div class="product-info">
-              <div class="product-name" id="productName">商品名称</div>
-              <div class="stats-row">
-                  <div class="stat-item">
-                      <div class="stat-label">预估销量</div>
-                      <div class="stat-value estimate" id="estimateVal">100</div>
-                  </div>
-                  <div class="stat-item">
-                      <div class="stat-label">剩余数量</div>
-                      <div class="stat-value remain" id="remainVal">20</div>
-                  </div>
-              </div>
-              <div class="need-box">
-                  <div class="label">🎯 需要配送</div>
-                  <div>
-                      <span class="value" id="needVal">80</span>
-                      <span class="unit">件</span>
-                  </div>
-              </div>
-          </div>
-
-          <div class="voice-visualizer" id="voiceVisualizer" onclick="toggleManualRecording()">
-              <div class="voice-ring"></div>
-              <div class="voice-ring"></div>
-              <div class="voice-ring"></div>
-              <div class="voice-icon" id="voiceIcon">🎙️</div>
-          </div>
-
-          <div class="status" id="statusIndicator">
-              <span id="statusText">准备中...</span>
-          </div>
-
-          <div class="user-speech">
-              <div class="label">👤 你说的话：</div>
-              <div class="text" id="userSpeechText">等待你的语音指令...</div>
-          </div>
-
-          <div id="voiceError" class="voice-error" style="display: none;"></div>
-
-          <!-- Manual recording button for problematic browsers -->
-          <button id="manualMicBtn" class="mic-button" onclick="toggleManualRecording()" style="display: none;">
-              🎤 点击开始录音
-          </button>
-
-          <div class="backup-buttons">
-              <button class="backup-btn complete" onclick="completeCurrentProduct(false)">
-                  ✅ 完成，下一个
-              </button>
-              <button class="backup-btn skip" onclick="completeCurrentProduct(true)">
-                  跳过
-              </button>
-          </div>
-
-          <div class="hint">
-              🎤 语音指令：说 <strong>"完成"</strong> 或 <strong>"下一个"</strong><br>
-              👆 或直接点击上方按钮操作
-          </div>
-      </div>
-
-      <!-- Complete Page -->
-      <div id="completePage" class="page">
-          <div class="main-content">
-              <div class="complete-icon">✓</div>
-              <div class="complete-title">配货完成！</div>
-              <div class="complete-subtitle">所有商品已处理完毕</div>
-
-              <div class="total-box">
-                  <div class="total-label">本次配送总量</div>
-                  <div class="total-value" id="totalDelivery">0</div>
-              </div>
-
-              <div class="summary-list" id="summaryList"></div>
-
-              <button class="btn btn-primary" onclick="resetApp()">
-                  🔄 开始新的配货
-              </button>
-          </div>
-      </div>
-  </div>
-
-  <script>
-      let products = [];
-      let currentIndex = 0;
-      let completedProducts = [];
-      let recognition = null;
-      let synthesis = window.speechSynthesis;
-      let isListening = false;
-      let isSpeaking = false;
-      let manualRecordingMode = false;
-      let recognitionSupported = false;
-      let restartAttempts = 0;
-      let maxRestartAttempts = 3;
-
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      // Detect browser and show info
-      function detectBrowser() {
-          const ua = navigator.userAgent;
-          let browserName = 'Unknown';
-          let isSecure = location.protocol === 'https:';
-          
-          if (ua.indexOf('EdgA') > -1 || ua.indexOf('Edg') > -1) {
-              browserName = 'Edge';
-          } else if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') == -1) {
-              browserName = 'Chrome';
-          } else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') == -1) {
-              browserName = 'Safari';
-          } else if (ua.indexOf('Firefox') > -1) {
-              browserName = 'Firefox';
-          }
-
-          const infoEl = document.getElementById('browserInfo');
-          if (infoEl) {
-              infoEl.style.display = 'block';
-              infoEl.innerHTML = `
-                  浏览器: ${browserName} | 
-                  协议: ${isSecure ? '🔒 HTTPS' : '⚠️ HTTP'} | 
-                  语音识别: ${SpeechRecognition ? '✓ 支持' : '✗ 不支持'}
-              `;
-          }
-
-          return { browserName, isSecure, hasRecognition: !!SpeechRecognition };
-      }
-
-      // Check if recognition is truly supported
-      async function checkRecognitionSupport() {
-          if (!SpeechRecognition) {
-              return false;
-          }
-
-          try {
-              // Try to request microphone permission
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-              stream.getTracks().forEach(track => track.stop());
-              return true;
-          } catch (err) {
-              console.error('Microphone access denied:', err);
-              return false;
-          }
-      }
-
-      function parseData(input) {
-          const lines = input.trim().split('\n');
-          const items = [];
-
-          lines.forEach(line => {
-              const parts = line.split(',').map(p => p.trim());
-              if (parts.length >= 3) {
-                  const name = parts[0];
-                  const estimate = parseInt(parts[1]) || 0;
-                  const remain = parseInt(parts[2]) || 0;
-
-                  if (name) {
-                      items.push({
-                          name: name,
-                          estimate: estimate,
-                          remain: remain,
-                          need: Math.max(0, estimate - remain)
-                      });
-                  }
-              }
-          });
-
-          return items;
-      }
-
-      async function startVoiceDistribution() {
-          const input = document.getElementById('dataInput').value;
-          products = parseData(input);
-
-          if (products.length === 0) {
-              alert('请输入有效的配货单数据');
-              return;
-          }
-
-          currentIndex = 0;
-          completedProducts = [];
-
-          showPage('distributionPage');
-
-          // Check recognition support
-          recognitionSupported = await checkRecognitionSupport();
-
-          if (recognitionSupported) {
-              initSpeechRecognition();
-          } else {
-              showVoiceError('语音识别不可用，请使用手动按钮模式');
-              document.getElementById('manualMicBtn').style.display = 'block';
-              manualRecordingMode = true;
-          }
-
-          setTimeout(() => {
-              showCurrentProduct();
-          }, 500);
-      }
-
-      function initSpeechRecognition() {
-          if (!SpeechRecognition) return;
-
-          recognition = new SpeechRecognition();
-          recognition.lang = 'zh-CN';
-          recognition.continuous = false; // Changed to false for better Android support
-          recognition.interimResults = true;
-          recognition.maxAlternatives = 1;
-
-          recognition.onstart = () => {
-              console.log('Recognition started');
-              isListening = true;
-              restartAttempts = 0;
-              updateStatus('listening', '🎤 正在听你说话...');
-              document.getElementById('voiceVisualizer').classList.add('listening');
-              document.getElementById('userSpeechText').textContent = '正在听...';
-          };
-
-          recognition.onend = () => {
-              console.log('Recognition ended');
-              isListening = false;
-              document.getElementById('voiceVisualizer').classList.remove('listening');
-              
-              // Auto-restart if still on distribution page and not speaking
-              if (!isSpeaking && document.getElementById('distributionPage').classList.contains('active')) {
-                  if (restartAttempts < maxRestartAttempts) {
-                      setTimeout(() => {
-                          if (!isSpeaking && !manualRecordingMode) {
-                              startListening();
-                          }
-                      }, 500);
-                  } else {
-                      // Switch to manual mode after too many failed attempts
-                      showVoiceError('自动语音识别遇到问题，已切换到手动模式');
-                      document.getElementById('manualMicBtn').style.display = 'block';
-                      manualRecordingMode = true;
-                  }
-              }
-          };
-
-          recognition.onresult = (event) => {
-              let finalTranscript = '';
-              let interimTranscript = '';
-
-              for (let i = event.resultIndex; i < event.results.length; i++) {
-                  const transcript = event.results[i][0].transcript;
-                  if (event.results[i].isFinal) {
-                      finalTranscript += transcript;
-                  } else {
-                      interimTranscript += transcript;
-                  }
-              }
-
-              if (interimTranscript) {
-                  document.getElementById('userSpeechText').textContent = interimTranscript + '...';
-              }
-
-              if (finalTranscript) {
-                  document.getElementById('userSpeechText').textContent = finalTranscript;
-                  processVoiceCommand(finalTranscript);
-                  restartAttempts = 0; // Reset on successful recognition
-              }
-          };
-
-          recognition.onerror = (event) => {
-              console.error('Speech recognition error:', event.error);
-              isListening = false;
-              
-              if (event.error === 'no-speech') {
-                  restartAttempts++;
-                  setTimeout(() => startListening(), 500);
-              } else if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                  showVoiceError('麦克风权限被拒绝，请在浏览器设置中允许麦克风访问');
-                  document.getElementById('manualMicBtn').style.display = 'block';
-                  manualRecordingMode = true;
-              } else if (event.error === 'network') {
-                  showVoiceError('网络错误，请检查网络连接');
-                  document.getElementById('manualMicBtn').style.display = 'block';
-                  manualRecordingMode = true;
-              } else {
-                  restartAttempts++;
-                  if (restartAttempts >= maxRestartAttempts) {
-                      showVoiceError('语音识别遇到问题，已切换到手动模式');
-                      document.getElementById('manualMicBtn').style.display = 'block';
-                      manualRecordingMode = true;
-                  }
-              }
-          };
-      }
-
-      function startListening() {
-          if (manualRecordingMode) return;
-          
-          if (recognition && !isListening && !isSpeaking) {
-              try {
-                  recognition.start();
-              } catch (e) {
-                  console.log('Recognition start error:', e);
-                  if (e.name === 'InvalidStateError') {
-                      // Already started, ignore
-                  } else {
-                      restartAttempts++;
-                  }
-              }
-          }
-      }
-
-      function stopListening() {
-          if (recognition && isListening) {
-              try {
-                  recognition.stop();
-              } catch (e) {
-                  console.log('Recognition stop error:', e);
-              }
-          }
-      }
-
-      function toggleManualRecording() {
-          if (!manualRecordingMode) return;
-
-          const btn = document.getElementById('manualMicBtn');
-          
-          if (isListening) {
-              stopListening();
-              btn.textContent = '🎤 点击开始录音';
-              btn.classList.remove('recording');
-          } else {
-              if (recognition) {
-                  startListening();
-                  btn.textContent = '⏹️ 点击停止录音';
-                  btn.classList.add('recording');
-              }
-          }
-      }
-
-      function processVoiceCommand(text) {
-          const command = text.toLowerCase();
-
-          if (command.includes('完成') || command.includes('下一个') || command.includes('好了') || 
-              command.includes('配好了') || command.includes('下一') || command.includes('继续') ||
-              command.includes('好的') || command.includes('确定') || command.includes('是的')) {
-              completeCurrentProduct(false);
-          } else if (command.includes('跳过') || command.includes('略过') || command.includes('不要') ||
-                     command.includes('没有') || command.includes('不配')) {
-              completeCurrentProduct(true);
-          } else if (command.includes('重复') || command.includes('再说一遍') || command.includes('什么') ||
-                     command.includes('没听清')) {
-              repeatCurrentProduct();
-          }
-      }
-
-      function showCurrentProduct() {
-          const product = products[currentIndex];
-
-          document.getElementById('currentNum').textContent = currentIndex + 1;
-          document.getElementById('totalNum').textContent = products.length;
-          document.getElementById('progressFill').style.width = 
-              ((currentIndex + 1) / products.length * 100) + '%';
-
-          document.getElementById('productName').textContent = product.name;
-          document.getElementById('estimateVal').textContent = product.estimate;
-          document.getElementById('remainVal').textContent = product.remain;
-          document.getElementById('needVal').textContent = product.need;
-
-          speakProductInfo(product);
-      }
-
-      function speakProductInfo(product) {
-          stopListening();
-          isSpeaking = true;
-          updateStatus('speaking', '🔊 AI正在播报...');
-
-          synthesis.cancel();
-
-          const text = `${product.name}，预估${product.estimate}，剩余${product.remain}，需要配送${product.need}件`;
-          const utterance = new SpeechSynthesisUtterance(text);
-          utterance.lang = 'zh-CN';
-          utterance.rate = 1.0;
-          utterance.pitch = 1.0;
-
-          utterance.onend = () => {
-              isSpeaking = false;
-              updateStatus('listening', '🎤 请说"完成"继续下一个');
-              if (!manualRecordingMode) {
-                  setTimeout(() => startListening(), 300);
-              }
-          };
-
-          utterance.onerror = () => {
-              isSpeaking = false;
-              if (!manualRecordingMode) {
-                  startListening();
-              }
-          };
-
-          synthesis.speak(utterance);
-      }
-
-      function repeatCurrentProduct() {
-          const product = products[currentIndex];
-          speakProductInfo(product);
-      }
-
-      function completeCurrentProduct(skipped) {
-          stopListening();
-          
-          const product = products[currentIndex];
-          completedProducts.push({
-              ...product,
-              skipped: skipped
-          });
-
-          isSpeaking = true;
-          synthesis.cancel();
-          
-          const confirmText = skipped ? '已跳过' : '好的，已完成';
-          const utterance = new SpeechSynthesisUtterance(confirmText);
-          utterance.lang = 'zh-CN';
-          utterance.rate = 1.2;
-
-          utterance.onend = () => {
-              isSpeaking = false;
-              nextProduct();
-          };
-
-          utterance.onerror = () => {
-              isSpeaking = false;
-              nextProduct();
-          };
-
-          synthesis.speak(utterance);
-      }
-
-      function nextProduct() {
-          currentIndex++;
-
-          if (currentIndex >= products.length) {
-              showComplete();
-          } else {
-              document.getElementById('userSpeechText').textContent = '等待你的语音指令...';
-              showCurrentProduct();
-          }
-      }
-
-      function showComplete() {
-          stopListening();
-          showPage('completePage');
-
-          const total = completedProducts
-              .filter(p => !p.skipped)
-              .reduce((sum, p) => sum + p.need, 0);
-
-          document.getElementById('totalDelivery').textContent = total;
-
-          const summaryHtml = completedProducts.map(p => `
-              <div class="summary-item">
-                  <span class="name">${p.name}</span>
-                  <span class="${p.skipped ? 'skipped' : 'count'}">
-                      ${p.skipped ? '已跳过' : p.need + ' 件'}
-                  </span>
-              </div>
-          `).join('');
-
-          document.getElementById('summaryList').innerHTML = summaryHtml;
-
-          setTimeout(() => {
-              const utterance = new SpeechSynthesisUtterance(`配货完成！本次共配送${total}件商品`);
-              utterance.lang = 'zh-CN';
-              synthesis.speak(utterance);
-          }, 500);
-      }
-
-      function updateStatus(type, text) {
-          const indicator = document.getElementById('statusIndicator');
-          const statusText = document.getElementById('statusText');
-          
-          indicator.className = 'status ' + type;
-          statusText.textContent = text;
-      }
-
-      function showVoiceError(message) {
-          const errorEl = document.getElementById('voiceError');
-          if (errorEl) {
-              errorEl.textContent = '⚠️ ' + message;
-              errorEl.style.display = 'block';
-          }
-          updateStatus('waiting', '👆 请使用按钮操作');
-      }
-
-      function showPage(pageId) {
-          document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-          document.getElementById(pageId).classList.add('active');
-      }
-
-      function resetApp() {
-          synthesis.cancel();
-          if (recognition) {
-              stopListening();
-          }
-          products = [];
-          currentIndex = 0;
-          completedProducts = [];
-          manualRecordingMode = false;
-          restartAttempts = 0;
-          document.getElementById('dataInput').value = '';
-          document.getElementById('userSpeechText').textContent = '等待你的语音指令...';
-          document.getElementById('voiceError').style.display = 'none';
-          document.getElementById('manualMicBtn').style.display = 'none';
-          showPage('setupPage');
-      }
-
-      window.onbeforeunload = () => {
-          if (recognition) {
-              recognition.stop();
-          }
-          synthesis.cancel();
-      };
-
-      // Initialize on load
-      window.onload = () => {
-          detectBrowser();
-      };
-  </script>
+                        <p class="help-text">每行一个商品，用英文逗号分隔</p>
+                    </div>
+                    <button class="btn btn-primary" id="startBtn" onclick="startVoiceDistribution()">
+                        🚀 开始语音配货
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Distribution Page -->
+        <div id="distributionPage" class="page">
+            <div class="progress-info">
+                商品 <span id="currentNum">1</span> / <span id="totalNum">10</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 10%"></div>
+            </div>
+
+            <div class="product-info">
+                <div class="product-name" id="productName">商品名称</div>
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <div class="stat-label">预估销量</div>
+                        <div class="stat-value estimate" id="estimateVal">100</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">剩余数量</div>
+                        <div class="stat-value remain" id="remainVal">20</div>
+                    </div>
+                </div>
+                <div class="need-box">
+                    <div class="label">🎯 需要配送</div>
+                    <div>
+                        <span class="value" id="needVal">80</span>
+                        <span class="unit">件</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="voice-visualizer" id="voiceVisualizer">
+                <div class="voice-ring"></div>
+                <div class="voice-ring"></div>
+                <div class="voice-ring"></div>
+                <div class="voice-icon" id="voiceIcon">🎙️</div>
+            </div>
+
+            <div class="status" id="statusIndicator">
+                <span id="statusText">准备中...</span>
+            </div>
+
+            <div class="user-speech">
+                <div class="label">👤 你说的话：</div>
+                <div class="text" id="userSpeechText">等待你的语音指令...</div>
+            </div>
+
+            <div id="voiceError" class="voice-error" style="display: none;">
+                ⚠️ 语音识别不可用，请使用下方按钮操作
+            </div>
+
+            <div class="backup-buttons">
+                <button class="backup-btn complete" onclick="completeCurrentProduct(false)">
+                    ✅ 完成，下一个
+                </button>
+                <button class="backup-btn skip" onclick="completeCurrentProduct(true)">
+                    跳过
+                </button>
+            </div>
+
+            <div class="hint">
+                🎤 语音指令：说 <strong>"完成"</strong> 或 <strong>"下一个"</strong><br>
+                👆 或直接点击上方按钮操作
+            </div>
+        </div>
+
+        <!-- Complete Page -->
+        <div id="completePage" class="page">
+            <div class="main-content">
+                <div class="complete-icon">✓</div>
+                <div class="complete-title">配货完成！</div>
+                <div class="complete-subtitle">所有商品已处理完毕</div>
+
+                <div class="total-box">
+                    <div class="total-label">本次配送总量</div>
+                    <div class="total-value" id="totalDelivery">0</div>
+                </div>
+
+                <div class="summary-list" id="summaryList"></div>
+
+                <button class="btn btn-primary" onclick="resetApp()">
+                    🔄 开始新的配货
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data
+        let products = [];
+        let currentIndex = 0;
+        let completedProducts = [];
+        let recognition = null;
+        let synthesis = window.speechSynthesis;
+        let isListening = false;
+        let isSpeaking = false;
+
+        // Check browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            alert('抱歉，您的浏览器不支持语音识别功能。请使用 Chrome、Edge 或 Safari 浏览器。');
+        }
+
+        // Parse input data
+        function parseData(input) {
+            const lines = input.trim().split('\n');
+            const items = [];
+
+            lines.forEach(line => {
+                const parts = line.split(',').map(p => p.trim());
+                if (parts.length >= 3) {
+                    const name = parts[0];
+                    const estimate = parseInt(parts[1]) || 0;
+                    const remain = parseInt(parts[2]) || 0;
+
+                    if (name) {
+                        items.push({
+                            name: name,
+                            estimate: estimate,
+                            remain: remain,
+                            need: Math.max(0, estimate - remain)
+                        });
+                    }
+                }
+            });
+
+            return items;
+        }
+
+        // Start voice distribution
+        function startVoiceDistribution() {
+            const input = document.getElementById('dataInput').value;
+            products = parseData(input);
+
+            if (products.length === 0) {
+                alert('请输入有效的配货单数据');
+                return;
+            }
+
+            currentIndex = 0;
+            completedProducts = [];
+
+            showPage('distributionPage');
+
+            // Initialize speech recognition
+            initSpeechRecognition();
+
+            // Show first product
+            setTimeout(() => {
+                showCurrentProduct();
+            }, 500);
+        }
+
+        // Initialize speech recognition
+        function initSpeechRecognition() {
+            if (!SpeechRecognition) return;
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'zh-CN';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                isListening = true;
+                updateStatus('listening', '🎤 正在听你说话...');
+                document.getElementById('voiceVisualizer').classList.add('listening');
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                document.getElementById('voiceVisualizer').classList.remove('listening');
+                
+                // Restart if not speaking and still on distribution page
+                if (!isSpeaking && document.getElementById('distributionPage').classList.contains('active')) {
+                    setTimeout(() => {
+                        if (!isSpeaking) {
+                            startListening();
+                        }
+                    }, 300);
+                }
+            };
+
+            recognition.onresult = (event) => {
+                let finalTranscript = '';
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                // Show interim results
+                if (interimTranscript) {
+                    document.getElementById('userSpeechText').textContent = interimTranscript + '...';
+                }
+
+                // Process final results
+                if (finalTranscript) {
+                    document.getElementById('userSpeechText').textContent = finalTranscript;
+                    processVoiceCommand(finalTranscript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.log('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    // Restart listening
+                    setTimeout(() => startListening(), 100);
+                } else if (event.error === 'network' || event.error === 'service-not-allowed' || event.error === 'not-allowed') {
+                    // Show error message and fallback to buttons
+                    showVoiceError();
+                }
+            };
+        }
+
+        // Start listening
+        function startListening() {
+            if (recognition && !isListening && !isSpeaking) {
+                try {
+                    recognition.start();
+                } catch (e) {
+                    console.log('Recognition already started');
+                }
+            }
+        }
+
+        // Stop listening
+        function stopListening() {
+            if (recognition && isListening) {
+                try {
+                    recognition.stop();
+                } catch (e) {
+                    console.log('Recognition already stopped');
+                }
+            }
+        }
+
+        // Process voice command
+        function processVoiceCommand(text) {
+            const command = text.toLowerCase();
+
+            if (command.includes('完成') || command.includes('下一个') || command.includes('好了') || 
+                command.includes('配好了') || command.includes('下一') || command.includes('继续')) {
+                completeCurrentProduct(false);
+            } else if (command.includes('跳过') || command.includes('略过') || command.includes('不要')) {
+                completeCurrentProduct(true);
+            } else if (command.includes('重复') || command.includes('再说一遍') || command.includes('什么')) {
+                repeatCurrentProduct();
+            }
+        }
+
+        // Show current product
+        function showCurrentProduct() {
+            const product = products[currentIndex];
+
+            // Update UI
+            document.getElementById('currentNum').textContent = currentIndex + 1;
+            document.getElementById('totalNum').textContent = products.length;
+            document.getElementById('progressFill').style.width = 
+                ((currentIndex + 1) / products.length * 100) + '%';
+
+            document.getElementById('productName').textContent = product.name;
+            document.getElementById('estimateVal').textContent = product.estimate;
+            document.getElementById('remainVal').textContent = product.remain;
+            document.getElementById('needVal').textContent = product.need;
+
+            // Speak product info
+            speakProductInfo(product);
+        }
+
+        // Speak product info
+        function speakProductInfo(product) {
+            stopListening();
+            isSpeaking = true;
+            updateStatus('speaking', '🔊 AI正在播报...');
+
+            synthesis.cancel();
+
+            const text = `${product.name}，预估${product.estimate}，剩余${product.remain}，需要配送${product.need}件`;
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                updateStatus('listening', '🎤 请说"完成"继续下一个');
+                startListening();
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                startListening();
+            };
+
+            synthesis.speak(utterance);
+        }
+
+        // Repeat current product
+        function repeatCurrentProduct() {
+            const product = products[currentIndex];
+            speakProductInfo(product);
+        }
+
+        // Complete current product
+        function completeCurrentProduct(skipped) {
+            stopListening();
+            
+            const product = products[currentIndex];
+            completedProducts.push({
+                ...product,
+                skipped: skipped
+            });
+
+            // Speak confirmation
+            isSpeaking = true;
+            synthesis.cancel();
+            
+            const confirmText = skipped ? '已跳过' : '好的，已完成';
+            const utterance = new SpeechSynthesisUtterance(confirmText);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 1.2;
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                nextProduct();
+            };
+
+            synthesis.speak(utterance);
+        }
+
+        // Next product
+        function nextProduct() {
+            currentIndex++;
+
+            if (currentIndex >= products.length) {
+                showComplete();
+            } else {
+                showCurrentProduct();
+            }
+        }
+
+        // Show complete page
+        function showComplete() {
+            stopListening();
+            showPage('completePage');
+
+            const total = completedProducts
+                .filter(p => !p.skipped)
+                .reduce((sum, p) => sum + p.need, 0);
+
+            document.getElementById('totalDelivery').textContent = total;
+
+            const summaryHtml = completedProducts.map(p => `
+                <div class="summary-item">
+                    <span class="name">${p.name}</span>
+                    <span class="${p.skipped ? 'skipped' : 'count'}">
+                        ${p.skipped ? '已跳过' : p.need + ' 件'}
+                    </span>
+                </div>
+            `).join('');
+
+            document.getElementById('summaryList').innerHTML = summaryHtml;
+
+            // Speak completion
+            setTimeout(() => {
+                const utterance = new SpeechSynthesisUtterance(`配货完成！本次共配送${total}件商品`);
+                utterance.lang = 'zh-CN';
+                synthesis.speak(utterance);
+            }, 500);
+        }
+
+        // Update status indicator
+        function updateStatus(type, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status ' + type;
+            statusText.textContent = text;
+        }
+
+        // Show voice error
+        function showVoiceError() {
+            const errorEl = document.getElementById('voiceError');
+            if (errorEl) {
+                errorEl.style.display = 'block';
+            }
+            updateStatus('waiting', '👆 请使用按钮操作');
+        }
+
+        // Show page
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+        }
+
+        // Reset app
+        function resetApp() {
+            synthesis.cancel();
+            if (recognition) {
+                stopListening();
+            }
+            products = [];
+            currentIndex = 0;
+            completedProducts = [];
+            document.getElementById('dataInput').value = '';
+            document.getElementById('userSpeechText').textContent = '等待你的语音指令...';
+            showPage('setupPage');
+        }
+
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            if (recognition) {
+                recognition.stop();
+            }
+            synthesis.cancel();
+        };
+    </script>
 </body>
 </html>
+
