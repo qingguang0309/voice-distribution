@@ -402,6 +402,17 @@
           transform: scale(0.98);
       }
 
+      .btn-outline {
+          background: var(--bg-card);
+          color: var(--text-secondary);
+          border: 1px solid var(--bg-card-light);
+      }
+
+      .btn-outline:active {
+          transform: scale(0.98);
+          background: var(--bg-card-light);
+      }
+
       .complete-icon {
           width: 100px;
           height: 100px;
@@ -650,10 +661,14 @@
               <div class="text" id="userSpeechText">等待你的语音指令...</div>
           </div>
 
-          <div class="hint">
+          <div class="hint" id="hintBox">
               🎤 <strong>直接说话即可</strong>，系统会自动识别你的语音<br>
               💡 说"完成"继续下一个，说"跳过"跳过当前商品
           </div>
+          
+          <button id="switchModeBtn" class="btn btn-outline" style="margin-top: 12px; padding: 12px; font-size: 13px; display: none;" ontouchstart="manualSwitchToVolumeMode()" onclick="manualSwitchToVolumeMode()">
+              🔊 语音识别不工作？切换到音量模式
+          </button>
       </div>
 
       <!-- Complete Page -->
@@ -693,11 +708,15 @@
       let recognitionTimeout = null;
       let lastRecognitionTime = 0;
       let isAndroid = /Android/i.test(navigator.userAgent);
+      let volumeTriggerMode = false; // 音量触发模式
+      let noResultTimeout = null; // 检测无结果超时
+      let soundDetected = false; // 声音检测标志
 
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       const VOLUME_THRESHOLD = 30; // 音量阈值
       const SILENCE_DELAY = 1500; // 静音后重启延迟
       const MIN_RECOGNITION_INTERVAL = 1000; // 最小识别间隔
+      const NO_RESULT_TIMEOUT = 5000; // 5秒无结果切换到音量模式
 
       // Initialize system info
       function initSystemInfo() {
@@ -809,22 +828,32 @@
           if (volumeCheckInterval) return;
 
           volumeCheckInterval = setInterval(() => {
-              if (isSpeaking || isListening) {
-                  // Update volume bars even when listening
-                  const volume = getVolumeLevel();
-                  updateVolumeBars(volume);
+              const volume = getVolumeLevel();
+              updateVolumeBars(volume);
+              
+              if (isSpeaking) return;
+
+              // 音量触发模式：检测到声音就完成当前商品
+              if (volumeTriggerMode && !soundDetected) {
+                  if (volume > VOLUME_THRESHOLD) {
+                      console.log('Sound detected in volume trigger mode, completing product...');
+                      soundDetected = true;
+                      document.getElementById('userSpeechText').textContent = '✓ 检测到声音';
+                      setTimeout(() => {
+                          completeCurrentProduct(false);
+                      }, 500);
+                  }
                   return;
               }
 
-              const volume = getVolumeLevel();
-              updateVolumeBars(volume);
-
-              // Auto-start recognition when volume exceeds threshold
-              if (volume > VOLUME_THRESHOLD) {
-                  const now = Date.now();
-                  if (now - lastRecognitionTime > MIN_RECOGNITION_INTERVAL) {
-                      console.log('Volume detected, starting recognition...');
-                      startListening();
+              // 正常模式：检测到声音启动识别
+              if (!volumeTriggerMode && !isListening) {
+                  if (volume > VOLUME_THRESHOLD) {
+                      const now = Date.now();
+                      if (now - lastRecognitionTime > MIN_RECOGNITION_INTERVAL) {
+                          console.log('Volume detected, starting recognition...');
+                          startListening();
+                      }
                   }
               }
           }, 100);
@@ -835,6 +864,42 @@
           if (volumeCheckInterval) {
               clearInterval(volumeCheckInterval);
               volumeCheckInterval = null;
+          }
+      }
+
+      // Switch to volume trigger mode
+      function switchToVolumeTriggerMode() {
+          console.log('Switching to volume trigger mode');
+          volumeTriggerMode = true;
+          soundDetected = false;
+          
+          // Stop speech recognition
+          stopListening();
+          
+          // Update UI
+          updateStatus('detecting', '🔊 音量检测模式 - 说话/拍手即可');
+          document.getElementById('userSpeechText').textContent = '🔊 语音识别不可用，已切换到音量检测模式';
+          
+          // Update hint
+          const hintEl = document.getElementById('hintBox');
+          if (hintEl) {
+              hintEl.innerHTML = '🔊 <strong>说任何话或拍手</strong> 完成当前商品<br>💡 系统已切换到音量检测模式（无需说指令）';
+              hintEl.style.background = 'rgba(245, 158, 11, 0.15)';
+              hintEl.style.border = '1px solid var(--warning)';
+              hintEl.style.padding = '12px';
+          }
+          
+          // Hide switch button
+          const switchBtn = document.getElementById('switchModeBtn');
+          if (switchBtn) {
+              switchBtn.style.display = 'none';
+          }
+      }
+
+      // Manual switch to volume mode
+      function manualSwitchToVolumeMode() {
+          if (!volumeTriggerMode) {
+              switchToVolumeTriggerMode();
           }
       }
 
@@ -917,6 +982,15 @@
               updateStatus('listening', '🎤 正在听你说话...');
               document.getElementById('voiceVisualizer').classList.add('listening');
               document.getElementById('userSpeechText').textContent = '正在听...';
+              
+              // 设置超时检测：如果5秒内没有识别结果，切换到音量模式
+              if (noResultTimeout) clearTimeout(noResultTimeout);
+              noResultTimeout = setTimeout(() => {
+                  if (isListening && !volumeTriggerMode) {
+                      console.log('No recognition result for 5s, switching to volume trigger mode');
+                      switchToVolumeTriggerMode();
+                  }
+              }, NO_RESULT_TIMEOUT);
           };
 
           recognition.onend = () => {
@@ -938,6 +1012,12 @@
           };
 
           recognition.onresult = (event) => {
+              // 清除超时，因为已经有结果了
+              if (noResultTimeout) {
+                  clearTimeout(noResultTimeout);
+                  noResultTimeout = null;
+              }
+              
               let finalTranscript = '';
               let interimTranscript = '';
 
@@ -1047,6 +1127,9 @@
           document.getElementById('remainVal').textContent = product.remain;
           document.getElementById('needVal').textContent = product.need;
 
+          // 重置声音检测标志
+          soundDetected = false;
+
           speakProductInfo(product);
       }
 
@@ -1066,25 +1149,45 @@
 
           utterance.onend = () => {
               isSpeaking = false;
-              updateStatus('detecting', '🔊 等待你说话...');
-              document.getElementById('userSpeechText').textContent = '请说出你的指令...';
-              // Start listening after speaking
-              setTimeout(() => {
-                  if (!isSpeaking && !isListening) {
-                      startListening();
+              soundDetected = false; // 重置声音检测
+              
+              if (volumeTriggerMode) {
+                  updateStatus('detecting', '🔊 说话/拍手完成配货');
+                  document.getElementById('userSpeechText').textContent = '🔊 请说话或拍手';
+              } else {
+                  updateStatus('detecting', '🔊 等待你说话...');
+                  document.getElementById('userSpeechText').textContent = '请说出你的指令...';
+                  
+                  // Show switch button after first product (in case recognition doesn't work)
+                  const switchBtn = document.getElementById('switchModeBtn');
+                  if (switchBtn && currentIndex >= 0) {
+                      switchBtn.style.display = 'block';
                   }
-              }, 300);
+                  
+                  // Start listening after speaking
+                  setTimeout(() => {
+                      if (!isSpeaking && !isListening && !volumeTriggerMode) {
+                          startListening();
+                      }
+                  }, 300);
+              }
           };
 
           utterance.onerror = () => {
               isSpeaking = false;
-              updateStatus('detecting', '🔊 等待你说话...');
-              // Start listening after error
-              setTimeout(() => {
-                  if (!isSpeaking && !isListening) {
-                      startListening();
-                  }
-              }, 300);
+              soundDetected = false;
+              
+              if (volumeTriggerMode) {
+                  updateStatus('detecting', '🔊 说话/拍手完成配货');
+              } else {
+                  updateStatus('detecting', '🔊 等待你说话...');
+                  // Start listening after error
+                  setTimeout(() => {
+                      if (!isSpeaking && !isListening && !volumeTriggerMode) {
+                          startListening();
+                      }
+                  }, 300);
+              }
           };
 
           synthesis.speak(utterance);
@@ -1209,6 +1312,11 @@
           stopListening();
           stopVolumeMonitoring();
           
+          if (noResultTimeout) {
+              clearTimeout(noResultTimeout);
+              noResultTimeout = null;
+          }
+          
           if (microphone) {
               microphone.disconnect();
               microphone = null;
@@ -1221,8 +1329,27 @@
           products = [];
           currentIndex = 0;
           completedProducts = [];
+          volumeTriggerMode = false;
+          soundDetected = false;
+          
           document.getElementById('dataInput').value = '';
           document.getElementById('userSpeechText').textContent = '等待你的语音指令...';
+          
+          // Reset hint
+          const hintEl = document.getElementById('hintBox');
+          if (hintEl) {
+              hintEl.innerHTML = '🎤 <strong>直接说话即可</strong>，系统会自动识别你的语音<br>💡 说"完成"继续下一个，说"跳过"跳过当前商品';
+              hintEl.style.background = 'var(--bg-card)';
+              hintEl.style.border = 'none';
+              hintEl.style.padding = '12px';
+          }
+          
+          // Hide switch button
+          const switchBtn = document.getElementById('switchModeBtn');
+          if (switchBtn) {
+              switchBtn.style.display = 'none';
+          }
+          
           showPage('setupPage');
       }
 
