@@ -809,13 +809,18 @@
           if (volumeCheckInterval) return;
 
           volumeCheckInterval = setInterval(() => {
-              if (isSpeaking) return;
+              if (isSpeaking || isListening) {
+                  // Update volume bars even when listening
+                  const volume = getVolumeLevel();
+                  updateVolumeBars(volume);
+                  return;
+              }
 
               const volume = getVolumeLevel();
               updateVolumeBars(volume);
 
               // Auto-start recognition when volume exceeds threshold
-              if (volume > VOLUME_THRESHOLD && !isListening) {
+              if (volume > VOLUME_THRESHOLD) {
                   const now = Date.now();
                   if (now - lastRecognitionTime > MIN_RECOGNITION_INTERVAL) {
                       console.log('Volume detected, starting recognition...');
@@ -919,10 +924,16 @@
               isListening = false;
               document.getElementById('voiceVisualizer').classList.remove('listening');
               
-              // Auto-restart after silence
+              // Auto-restart after a short delay if still on distribution page
               if (!isSpeaking && document.getElementById('distributionPage').classList.contains('active')) {
                   updateStatus('detecting', '🔊 等待你说话...');
-                  // Don't auto-restart, let volume detection trigger it
+                  // Auto-restart after short delay
+                  setTimeout(() => {
+                      if (!isSpeaking && !isListening && document.getElementById('distributionPage').classList.contains('active')) {
+                          console.log('Auto-restarting recognition...');
+                          startListening();
+                      }
+                  }, 500);
               }
           };
 
@@ -940,12 +951,15 @@
               }
 
               if (interimTranscript) {
+                  console.log('Interim transcript:', interimTranscript);
                   document.getElementById('userSpeechText').textContent = interimTranscript + '...';
               }
 
               if (finalTranscript) {
                   console.log('Final transcript:', finalTranscript);
-                  document.getElementById('userSpeechText').textContent = finalTranscript;
+                  document.getElementById('userSpeechText').textContent = '✓ ' + finalTranscript;
+                  // Stop recognition before processing to avoid conflicts
+                  stopListening();
                   processVoiceCommand(finalTranscript);
               }
           };
@@ -993,6 +1007,7 @@
       // Process voice command
       function processVoiceCommand(text) {
           const command = text.toLowerCase();
+          console.log('Processing command:', command);
 
           if (command.includes('完成') || command.includes('下一个') || command.includes('好了') || 
               command.includes('配好了') || command.includes('下一') || command.includes('继续') ||
@@ -1005,6 +1020,16 @@
           } else if (command.includes('重复') || command.includes('再说一遍') || command.includes('什么') ||
                      command.includes('没听清') || command.includes('再来')) {
               repeatCurrentProduct();
+          } else {
+              // Unrecognized command, restart listening
+              console.log('Unrecognized command, restarting...');
+              document.getElementById('userSpeechText').textContent = '❓ 未识别的指令，请重新说';
+              setTimeout(() => {
+                  if (!isSpeaking && !isListening) {
+                      document.getElementById('userSpeechText').textContent = '请说出你的指令...';
+                      startListening();
+                  }
+              }, 1000);
           }
       }
 
@@ -1043,11 +1068,23 @@
               isSpeaking = false;
               updateStatus('detecting', '🔊 等待你说话...');
               document.getElementById('userSpeechText').textContent = '请说出你的指令...';
+              // Start listening after speaking
+              setTimeout(() => {
+                  if (!isSpeaking && !isListening) {
+                      startListening();
+                  }
+              }, 300);
           };
 
           utterance.onerror = () => {
               isSpeaking = false;
               updateStatus('detecting', '🔊 等待你说话...');
+              // Start listening after error
+              setTimeout(() => {
+                  if (!isSpeaking && !isListening) {
+                      startListening();
+                  }
+              }, 300);
           };
 
           synthesis.speak(utterance);
@@ -1055,6 +1092,8 @@
 
       // Repeat current product
       function repeatCurrentProduct() {
+          console.log('Repeating current product');
+          stopListening();
           const product = products[currentIndex];
           speakProductInfo(product);
       }
@@ -1084,12 +1123,16 @@
 
           utterance.onend = () => {
               isSpeaking = false;
-              nextProduct();
+              setTimeout(() => {
+                  nextProduct();
+              }, 200);
           };
 
           utterance.onerror = () => {
               isSpeaking = false;
-              nextProduct();
+              setTimeout(() => {
+                  nextProduct();
+              }, 200);
           };
 
           synthesis.speak(utterance);
